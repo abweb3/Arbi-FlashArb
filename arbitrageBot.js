@@ -4,8 +4,8 @@ const { ChainId, Token, WETH, Fetcher, Route } = require('@uniswap/sdk');
 const FlashLoanReceiverABI = require('./flashloanreceive.abi'); // Import the FlashLoanReceiver contract ABI
 
 // Set up provider and signer
-const { AlchemyWeb3Provider } = require('@alch/alchemy-web3');
-const provider = new AlchemyWeb3Provider(process.env.ALCHEMY_RPC_URL, 'arb-mainnet');
+const { AlchemyProvider } = require('@alch/alchemy-web3');
+const provider = new AlchemyProvider('arb-mainnet', process.env.ALCHEMY_RPC_URL);
 const signer = new ethers.Wallet(process.env.PRIVATE_KEY).connect(provider);
 
 // Set up addresses and tokens
