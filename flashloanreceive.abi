@@ -1,0 +1,65 @@
+[
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "assets",
+        "type": "address[]"
+      },
+      {
+        "name": "amounts",
+        "type": "uint256[]"
+      },
+      {
+        "name": "premiums",
+        "type": "uint256[]"
+      },
+      {
+        "name": "initiator",
+        "type": "address"
+      },
+      {
+        "name": "params",
+        "type": "bytes"
+      }
+    ],
+    "name": "executeOperation",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "ADDRESSES_PROVIDER",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "POOL",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

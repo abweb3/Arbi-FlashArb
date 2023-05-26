@@ -1,0 +1,20 @@
+{
+  "name": "arbi-flasharb",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node arbitrageBot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aave/protocol-v2": "^1.0.1",
+    "@alch/alchemy-web3": "^1.4.7",
+    "@uniswap/sdk": "^3.0.3",
+    "dotenv": "^16.0.3",
+    "ethers": "^6.4.0"
+  }
+}
