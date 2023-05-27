@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { createAlchemyWeb3 } = require("@alch/alchemy-web3");
 const ethers = require("ethers");
+const { ChainId, Token, WETH, Fetcher, Route } = require("@uniswap/sdk");
 const FlashLoanReceiverABI = require("./flashloanreceive.abi");
 
 const web3 = createAlchemyWeb3(process.env.ALCHEMY_RPC_URL);
@@ -19,6 +20,8 @@ const poolAddressesProviderAddress =
 const flashLoanReceiverContractAddress =
   process.env.FLASH_LOAN_RECEIVER_CONTRACT_ADDRESS;
 
+const token = new Token(ChainId.MAINNET, tokenAddress, 18);
+
 const gasPrice = ethers.utils.parseUnits("50", "gwei");
 const gasLimit = 500000;
 
@@ -30,16 +33,15 @@ const config = {
   slippageTolerance,
 };
 
-const IUniswapV3PoolABI = [
-  /* Your ABI array here */
-];
-const poolAddress = "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"; // replace with your pool address
-
 const analyzeAndArbitrage = async () => {
   try {
-    const uniswapPrice = await getPrice(uniswap);
-    const sushiswapPrice = await getPrice(sushiswap);
-    const camelotPrice = await getPrice(camelot);
+    const uniswapReserves = await getReserves(uniswap);
+    const sushiswapReserves = await getReserves(sushiswap);
+    const camelotReserves = await getReserves(camelot);
+
+    const uniswapPrice = calculatePrice(token, uniswapReserves);
+    const sushiswapPrice = calculatePrice(token, sushiswapReserves);
+    const camelotPrice = calculatePrice(token, camelotReserves);
 
     const dexes = [uniswap, sushiswap, camelot];
     const prices = [uniswapPrice, sushiswapPrice, camelotPrice];
@@ -77,62 +79,78 @@ const analyzeAndArbitrage = async () => {
   }
 };
 
-const getPrice = async (dex) => {
-  const pool = new ethers.Contract(poolAddress, IUniswapV3PoolABI, provider);
-  const slot0 = await pool.slot0();
-  const sqrtPriceX96 = slot0[0];
-  return Math.pow(sqrtPriceX96 / Math.pow(2, 96), 2);
+const getReserves = async (dex) => {
+  const pair = await Fetcher.fetchPairData(
+    token,
+    WETH[ChainId.MAINNET],
+    provider
+  );
+  const route = new Route([pair], WETH[ChainId.MAINNET]);
+
+  return dex === uniswap ? pair.reserve0 : pair.reserve1;
 };
+
+const calculatePrice = (token, reserves) => reserves / 10 ** token.decimals;
 
 const calculateProfit = (sourcePrice, targetPrice1, targetPrice2) => {
   const amount = ethers.utils.parseEther("1");
   const fee = amount.mul(5).div(10000);
   const targetAmount1 = amount
     .div(sourcePrice)
-    .mul(1 - config.slippageTolerance)
-    .mul(targetPrice1)
     .mul(1 - config.slippageTolerance);
   const targetAmount2 = targetAmount1
-    .div(targetPrice2)
+    .div(targetPrice1)
     .mul(1 - config.slippageTolerance);
-  const profit = targetAmount2.sub(amount).sub(fee);
+
+  const profit = targetAmount2.mul(targetPrice2).sub(amount.sub(fee));
+
   return profit;
 };
 
-const calculateTradeAmounts = (
-  profit,
-  sourcePrice,
-  targetPrice1,
-  targetPrice2
+const executeFlashLoan = async (
+  amount,
+  poolAddressesProviderAddress,
+  tokenAddress
 ) => {
-  const amount = ethers.utils.parseEther("1");
-  const amount1 = amount.div(sourcePrice).mul(1 - config.slippageTolerance);
-  const amount2 = amount1
-    .mul(targetPrice1)
-    .mul(1 - config.slippageTolerance)
-    .mul(targetPrice2)
-    .mul(1 - config.slippageTolerance);
-  return { amount1, amount2 };
-};
-
-const executeFlashLoan = async (amount, addressesProvider, tokenAddress) => {
-  const flashLoanReceiverContract = new ethers.Contract(
+  const flashLoanReceiver = new ethers.Contract(
     flashLoanReceiverContractAddress,
     FlashLoanReceiverABI,
     signer
   );
 
-  const tx = await flashLoanReceiverContract.executeFlashLoan(
-    addressesProvider,
-    tokenAddress,
-    amount
+  const overrides = {
+    gasLimit: config.gasLimit,
+    gasPrice: config.gasPrice,
+  };
+
+  const transaction = await flashLoanReceiver.executeOperation(
+    [tokenAddress],
+    [amount],
+    [0],
+    signer.address,
+    "0x",
+    overrides
   );
 
-  await tx.wait();
+  console.log("Flash loan transaction hash:", transaction.hash);
+};
+
+const calculateTradeAmounts = (amount, sourcePrice, targetPrice) => {
+  const targetAmount = amount
+    .div(sourcePrice)
+    .mul(1 - config.slippageTolerance);
+  const sourceAmount = targetAmount
+    .div(targetPrice)
+    .mul(1 - config.slippageTolerance);
+
+  return {
+    amount1: sourceAmount,
+    amount2: targetAmount,
+  };
 };
 
 const performTrade = async (dex, amount, config) => {
-  // Add your trade logic here
+  console.log(`Performing ${dex} trade with amount: ${amount}`);
 };
 
-analyzeAndArbitrage();
+setInterval(analyzeAndArbitrage, 5000);
