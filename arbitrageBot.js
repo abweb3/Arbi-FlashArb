@@ -7,12 +7,12 @@ const web3 = createAlchemyWeb3(process.env.ALCHEMY_RPC_URL);
 const provider = new ethers.providers.JsonRpcProvider(
   process.env.ALCHEMY_RPC_URL
 );
-const signer = new ethers.Wallet(process.env.PRIVATE_KEY).connect(provider);
+const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
 const uniswap = "Uniswap V3";
 const sushiswap = "SushiSwap";
 const camelot = "Camelot";
-const tokenAddress = "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443";
+const tokenAddress = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
 
 const poolAddressesProviderAddress =
   process.env.POOL_ADDRESSES_PROVIDER_ADDRESS;
@@ -30,10 +30,12 @@ const config = {
   slippageTolerance,
 };
 
-const IUniswapV3PoolABI = [
-  /* Your ABI array here */
+// Update the ABI with the correct Uniswap V3 Pool ABI
+const UniswapV3PoolABI = [
+  // Add the ABI here
 ];
-const poolAddress = "0x8ad599c3A0ff1De082011EFDDc58f1908eb6e6D8"; // replace with your pool address
+
+const poolAddress = "0xC31E54c7a869B9FcBEcc14363CF510d1c41fa443"; // replace with your pool address
 
 const analyzeAndArbitrage = async () => {
   try {
@@ -78,10 +80,11 @@ const analyzeAndArbitrage = async () => {
 };
 
 const getPrice = async (dex) => {
-  const pool = new ethers.Contract(poolAddress, IUniswapV3PoolABI, provider);
+  const pool = new ethers.Contract(poolAddress, UniswapV3PoolABI, provider);
   const slot0 = await pool.slot0();
-  const sqrtPriceX96 = slot0[0];
-  return Math.pow(sqrtPriceX96 / Math.pow(2, 96), 2);
+  const sqrtPriceX96 = slot0.sqrtPriceX96.toString();
+  const price = ethers.utils.formatUnits(sqrtPriceX96, 18);
+  return parseFloat(price);
 };
 
 const calculateProfit = (sourcePrice, targetPrice1, targetPrice2) => {
